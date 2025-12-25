@@ -1,0 +1,14 @@
+.git
+.DS_Store
+
+node_modules
+dist
+
+docs
+public/userscript
+
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+

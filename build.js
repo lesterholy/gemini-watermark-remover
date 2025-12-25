@@ -11,7 +11,11 @@ let _commitHash = null;
 const getCommitHash = () => {
   if (_commitHash) return _commitHash;
   try {
-    _commitHash = execSync('git rev-parse --short HEAD').toString().trim();
+    _commitHash = execSync('git rev-parse --short HEAD', {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim();
   } catch {
     _commitHash = 'unknown';
   }

@@ -1,0 +1,11 @@
+services:
+  web:
+    image: ${IMAGE:-ghcr.io/你的GitHub用户名/你的仓库名:latest}
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

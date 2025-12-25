@@ -81,6 +81,65 @@ pnpm build
 pnpm serve
 ```
 
+## 部署到 Dokploy（最省事）
+
+本项目是**纯前端静态站点**（`pnpm build` 输出到 `dist/`），最简单的方式是让 Dokploy 直接用 Dockerfile 构建并用 Nginx 托管。
+
+1. 将本仓库推到 Git（GitHub/GitLab/自建 Gitea 都可以）
+2. 在 Dokploy 新建应用：
+   - Source：选择你的 Git 仓库
+   - Build：选择 `Dockerfile`，路径为 `Dockerfile`
+   - Port：填 `80`（容器内部端口）
+3. 绑定域名并开启 HTTPS（Dokploy 一般可自动签发证书）
+4. 点击 Deploy
+
+如果你想本地先验证镜像是否正常：
+
+```bash
+docker build -t gemini-watermark-remover .
+docker run --rm -p 8080:80 gemini-watermark-remover
+# 浏览器打开 http://localhost:8080
+```
+
+## Dokploy 使用“已构建镜像”部署（推荐）
+
+如果你希望 Dokploy 不在服务器上构建，而是**直接拉取 GitHub Actions 构建好的镜像**，按下面做即可（默认使用 GHCR：`ghcr.io`）。
+
+### 1) GitHub Actions 自动构建并推送镜像
+
+仓库已添加工作流：`.github/workflows/build-image.yml`，会在：
+- 推送到 `main/master` 时推送 `:latest` 与 `:sha-短哈希` 标签
+- 推送 `v*` 标签时推送对应版本标签（例如 `v1.2.3`）
+
+首次使用前确认 GitHub 仓库设置：
+- `Settings → Actions → General → Workflow permissions` 设为 **Read and write permissions**
+- 确认 GHCR 包（Packages）可被你部署环境访问（私有包需要登录）
+
+镜像地址格式：
+- `ghcr.io/<owner>/<repo>:latest`
+
+例如（把 `<owner>/<repo>` 换成你的仓库）：
+- `ghcr.io/yourname/gemini-watermark-remover:latest`
+
+### 2) Dokploy 直接用镜像部署
+
+在 Dokploy 创建应用时选择“从镜像部署”（或等价入口）：
+- Image：填你的镜像，例如 `ghcr.io/<owner>/<repo>:latest`
+- Container Port：填 `80`
+
+如果你的 GHCR 镜像是私有的，还需要在 Dokploy 里配置 Registry 凭据：
+- Registry：`ghcr.io`
+- Username：你的 GitHub 用户名
+- Token：GitHub Personal Access Token（需要 `read:packages`）
+
+### 3) 用 docker-compose（可选）
+
+你也可以让 Dokploy 直接使用 `docker-compose.yml`，并通过环境变量指定镜像：
+
+```bash
+IMAGE=ghcr.io/<owner>/<repo>:latest APP_PORT=8080 docker compose up -d
+```
+
 ## 算法原理
 
 ### Gemini 添加水印的方式
