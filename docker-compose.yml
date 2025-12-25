@@ -1,11 +1,57 @@
 services:
   web:
     image: ${IMAGE:-ghcr.io/你的GitHub用户名/你的仓库名:latest}
+    container_name: ${CONTAINER_NAME:-gemini-watermark-remover}
+    networks:
+      - dokploy-network
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8080}:80"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      test:
+        ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+    labels:
+      # 启用 Traefik
+      - "traefik.enable=true"
+
+      # HTTP 路由（重定向到 HTTPS）
+      - "traefik.http.routers.gemini-watermark-remover-http.rule=Host(`banana.ovo.re`) || Host(`www.banana.ovo.re`)"
+      - "traefik.http.routers.gemini-watermark-remover-http.entrypoints=web"
+      - "traefik.http.routers.gemini-watermark-remover-http.middlewares=redirect-to-https@docker"
+
+      # HTTPS 路由
+      - "traefik.http.routers.gemini-watermark-remover.rule=Host(`banana.ovo.re`) || Host(`www.banana.ovo.re`)"
+      - "traefik.http.routers.gemini-watermark-remover.entrypoints=websecure"
+      - "traefik.http.routers.gemini-watermark-remover.tls=true"
+      - "traefik.http.routers.gemini-watermark-remover.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gemini-watermark-remover.middlewares=security-headers@docker,compress@docker"
+
+      # 服务配置
+      - "traefik.http.services.gemini-watermark-remover.loadbalancer.server.port=80"
+
+      # HTTP 到 HTTPS 重定向中间件
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+      # 压缩中间件
+      - "traefik.http.middlewares.compress.compress=true"
+
+      # 安全头中间件
+      - "traefik.http.middlewares.security-headers.headers.framedeny=true"
+      - "traefik.http.middlewares.security-headers.headers.browserxssfilter=true"
+      - "traefik.http.middlewares.security-headers.headers.contenttypenosniff=true"
+      - "traefik.http.middlewares.security-headers.headers.sslredirect=true"
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.security-headers.headers.stsPreload=true"
+networks:
+  default:
+    external: true
+    name: dokploy-network
+  traefik:
+    external: true
+    name: traefik-network
